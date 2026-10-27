@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>OpenMixing</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#14161a;--card:#1d2026;--line:#2c313a;--fg:#e8eaed;--dim:#8b93a1;--acc:#4f9dff;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 16px 120px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:0 0 10px}
+.sub{color:var(--dim);margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+button{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:7px 14px;font:inherit;cursor:pointer}
+button.sec{background:#2c313a}button:disabled{opacity:.4;cursor:default}
+input[type=text]{background:#111318;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:7px 10px;font:inherit}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1;min-width:200px}
+.bar{height:6px;background:#111318;border-radius:3px;overflow:hidden;margin-top:10px}.bar>div{height:100%;background:var(--acc);transition:width .3s}
+table{width:100%;border-collapse:collapse}th{text-align:left;color:var(--dim);font-weight:500;font-size:12px;padding:4px 6px}
+td{padding:5px 6px;border-top:1px solid var(--line);vertical-align:middle}
+td input{width:76px;padding:3px 6px;background:#111318;border:1px solid var(--line);color:var(--fg);border-radius:4px;font:inherit}
+.name{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{font-size:11px;padding:1px 7px;border-radius:9px;background:#2c313a}.warn{color:var(--warn)}.bad{color:var(--bad)}.ok{color:var(--ok)}
+.dirs{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:10px}
+.dirs div{padding:5px 10px;cursor:pointer;border-bottom:1px solid var(--line)}.dirs div:hover{background:#252a32}
+.mini{padding:1px 7px;background:#2c313a}
+.tl{display:flex;height:34px;border-radius:6px;overflow:hidden;margin:10px 0;cursor:pointer}
+.tl div{overflow:hidden;white-space:nowrap;font-size:11px;padding:8px 6px;border-right:1px solid var(--bg);min-width:2px}
+.cur{background:#1f3350}.tli{padding:6px 8px;border-radius:6px;cursor:pointer;display:flex;gap:10px}.tli:hover{background:#252a32}.tli.now{background:#1f3350}
+.t{color:var(--dim);font-variant-numeric:tabular-nums;width:48px}
+footer{position:fixed;left:0;right:0;bottom:0;background:#0d0f12;border-top:1px solid var(--line);padding:10px 16px}
+footer audio{width:100%;max-width:1000px;display:block;margin:0 auto}
+.err{color:var(--bad);margin-top:8px;white-space:pre-wrap}
+</style></head><body><main>
+<h1>OpenMixing</h1><div class="sub">Pick a folder of music. It analyses each track (tempo, beat grid, key, loudness), orders them, and renders one continuous beatmatched mix.</div>
+
+<div class="card"><h2>1 · Folder</h2>
+ <div class="row"><button id="pick">Choose folder…</button>
+  <input type="text" id="path" class="grow" placeholder="/Users/you/Music/My set">
+  <button id="browse" class="sec">Browse</button><button id="scan">Analyse</button></div>
+ <div id="dirs" class="dirs" hidden></div>
+ <div id="prog" hidden><div class="bar"><div id="progbar"></div></div><div class="sub" id="progtxt" style="margin:6px 0 0"></div></div>
+ <div id="aerr" class="err"></div>
+</div>
+
+<div class="card" id="tcard" hidden><h2>2 · Tracks <span id="tcount"></span></h2>
+ <div class="row" style="margin-bottom:10px"><button id="auto" class="sec">Auto-order (warm-up → peak)</button>
+  <button id="mix">Build mix</button><span class="sub" style="margin:0">BPM / downbeat are editable if the analysis is off — the mix is rebuilt from them.</span></div>
+ <table><thead><tr><th>#</th><th>Track</th><th>BPM</th><th>1st downbeat (s)</th><th>Key</th><th>LUFS</th><th>Grid</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+ <div id="mprog" hidden><div class="bar"><div id="mbar"></div></div><div class="sub" id="mtxt" style="margin:6px 0 0"></div></div>
+ <div id="merr" class="err"></div>
+</div>
+
+<div class="card" id="rcard" hidden><h2>3 · Mix <span id="rdur"></span></h2>
+ <div id="tl" class="tl"></div><div id="tli"></div>
+</div>
+</main>
+<footer id="foot" hidden><audio id="player" controls></audio></footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const api=async(url,body)=>{const r=await fetch(url,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m}catch{}throw new Error(m)}return r.json()};
+const fmt=s=>{s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let tracks=[],shownVersion=0,busy=false,editing=false;
+
+async function browse(p){try{const d=await api('/api/browse?path='+encodeURIComponent(p||''));
+ $('path').value=d.path;const el=$('dirs');el.hidden=false;
+ el.innerHTML=(d.parent?'<div data-p="'+esc(d.parent)+'">⬆ ..</div>':'')+d.dirs.map(n=>'<div data-p="'+esc(d.path.replace(/\/$/,'')+'/'+n)+'">📁 '+esc(n)+'</div>').join('')+
+  '<div style="color:var(--dim);cursor:default">'+d.audio_files+' audio file(s) directly in this folder</div>';
+ el.onclick=e=>{const p=e.target.dataset.p;if(p)browse(p)}}catch(e){$('aerr').textContent=e.message}}
+$('browse').onclick=()=>browse($('path').value);
+$('pick').onclick=async()=>{try{const d=await api('/api/pick-folder',{});if(d.path){$('path').value=d.path;scan()}}catch(e){$('aerr').textContent=e.message}};
+$('scan').onclick=scan;
+async function scan(){$('aerr').textContent='';$('dirs').hidden=true;
+ try{await api('/api/scan',{path:$('path').value});$('rcard').hidden=true;$('foot').hidden=true;poll()}catch(e){$('aerr').textContent=e.message}}
+
+function renderRows(){
+ $('tcount').textContent='('+tracks.length+')';
+ $('rows').innerHTML=tracks.map((t,i)=>`<tr data-id="${t.id}"><td>${i+1}</td><td class="name" title="${esc(t.path)}">${esc(t.name)}</td>
+ <td><input data-f="bpm" value="${t.bpm.toFixed(2)}"></td><td><input data-f="first_downbeat" value="${t.first_downbeat.toFixed(3)}"></td>
+ <td><span class="pill">${t.key}</span></td><td>${t.lufs}</td>
+ <td>${t.grid_stable?'<span class="ok">✓</span>':'<span class="warn" title="variable tempo – will be cut, not beatmatched">~</span>'}</td>
+ <td style="white-space:nowrap"><button class="mini" data-m="-1">↑</button> <button class="mini" data-m="1">↓</button></td></tr>`).join('')}
+$('rows').onchange=async e=>{const tr=e.target.closest('tr'),f=e.target.dataset.f;if(!f)return;
+ try{await api('/api/track/'+tr.dataset.id,{[f]:parseFloat(e.target.value)})}catch(x){$('merr').textContent=x.message}poll()};
+$('rows').onfocusin=()=>editing=true;$('rows').onfocusout=()=>editing=false;
+$('rows').onclick=async e=>{const m=e.target.dataset.m;if(!m)return;const i=[...$('rows').children].indexOf(e.target.closest('tr')),j=i+ +m;
+ if(j<0||j>=tracks.length)return;const ids=tracks.map(t=>t.id);[ids[i],ids[j]]=[ids[j],ids[i]];
+ tracks=await api('/api/order',{ids});renderRows()};
+$('auto').onclick=async()=>{tracks=await api('/api/order',{ids:null});renderRows()};
+$('mix').onclick=async()=>{$('merr').textContent='';$('rcard').hidden=true;try{await api('/api/mix',{});poll()}catch(e){$('merr').textContent=e.message}};
+
+async function poll(){if(busy)return;busy=true;
+ try{for(;;){const s=await api('/api/state');const a=s.analysis,m=s.mix;
+  $('prog').hidden=!(a.running||a.total&&a.done<a.total);
+  $('progbar').style.width=(a.total?100*a.done/a.total:0)+'%';
+  $('progtxt').textContent=`Analysing ${a.done}/${a.total} tracks…`;
+  $('aerr').textContent=a.errors.join('\n');
+  if(!editing||!tracks.length){tracks=s.tracks;if(!a.running||!$('rows').children.length)renderRows()}
+  $('tcard').hidden=!tracks.length;
+  $('scan').disabled=$('pick').disabled=a.running||m.running;$('mix').disabled=a.running||m.running||tracks.length<2;$('auto').disabled=a.running||m.running;
+  $('mprog').hidden=!m.running;$('mbar').style.width=(m.total?100*m.done/m.total:0)+'%';
+  $('mtxt').textContent=`Rendering transition ${Math.min(m.done+1,m.total)}/${m.total}…`;
+  if(m.error)$('merr').textContent=m.error;
+  if(m.result&&m.result.url!==shownVersion){shownVersion=m.result.url;showMix(m.result)}
+  if(!a.running&&!m.running)break;await new Promise(r=>setTimeout(r,700))}}finally{busy=false}}
+
+function showMix(r){$('rcard').hidden=false;$('foot').hidden=false;$('rdur').textContent='· '+fmt(r.duration);
+ const tl=r.timeline,pl=$('player');pl.src=r.url;
+ const ends=tl.map((x,i)=>i+1<tl.length?tl[i+1].start_s:r.duration);
+ $('tl').innerHTML=tl.map((x,i)=>`<div data-s="${x.start_s}" style="width:${100*(ends[i]-x.start_s)/r.duration}%;background:hsl(${(i*47)%360} 40% 30%)" title="${esc(x.name)}">${esc(x.name)}</div>`).join('');
+ $('tli').innerHTML=tl.map((x,i)=>{const t=x.transition_in;const how=!t?'':t.kind==='echo'?`<span class="dim">${t.bars}-bar filter + echo-out (not beatmatched)</span>`:t.kind==='cut'?'<span class="warn">cut (tempo too far apart)</span>':`<span class="dim">${t.bars}-bar blend, ${t.from_bpm.toFixed(1)}→${t.to_bpm.toFixed(1)} BPM</span>`;
+  return `<div class="tli" data-s="${x.start_s}"><span class="t">${fmt(x.start_s)}</span><span>${esc(x.name)}</span><span class="pill">${x.bpm.toFixed(1)}</span><span class="pill">${x.key}</span>${how}</div>`}).join('');
+ const seek=e=>{const s=e.target.closest('[data-s]');if(s){pl.currentTime=+s.dataset.s;pl.play()}};$('tl').onclick=$('tli').onclick=seek;
+ pl.ontimeupdate=()=>{[...$('tli').children].forEach((el,i)=>el.classList.toggle('now',pl.currentTime>=tl[i].start_s&&pl.currentTime<ends[i]))}}
+poll();
+</script></body></html>

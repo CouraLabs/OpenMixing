@@ -1,0 +1,12 @@
+mcp>=1.2,<2
+numpy
+scipy
+soundfile
+soxr
+pedalboard
+librosa
+pyloudnorm
+mutagen
+requests
+pydantic
+pytest

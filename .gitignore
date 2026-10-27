@@ -1,0 +1,31 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local data: audio library and project caches
+tracks/
+.openmixing/
+
+# Tooling
+.claude/
+.impeccable/
+
+# Work-in-progress notes
+stage-1-testing.md
+stage-2.md
+stage-3.md
