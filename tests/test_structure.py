@@ -1,6 +1,6 @@
 import numpy as np
 
-from openmixing.analysis.features import structure
+from openmixing.analysis.structure import structure
 
 
 def _bf(blocks, n, seed=0):

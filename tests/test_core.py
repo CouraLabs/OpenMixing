@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
+from openmixing.core.units import BEAT_DIVISIONS, SR, parse_beats
 from openmixing.dsp import eq, fx, limiter
-from openmixing.models import BEAT_DIVISIONS, SR, parse_beats
 
 
 def test_parse_beats_accepts_all_divisions():
@@ -45,3 +45,27 @@ def test_every_fx_renders_finite(name, beats):
     region = (np.random.default_rng(2).standard_normal((2, SR // 2)) * 0.1).astype(np.float32)
     out = fx.render(name, region, 60 / 124, beats, {})
     assert out.y.shape[0] == 2 and np.isfinite(out.y).all()
+
+
+def test_core_edge_cases(tmp_path):
+    import pytest
+
+    from openmixing.core.decode import decode
+    from openmixing.core.errors import OpenMixingError
+    from openmixing.core.jsonio import write_json
+    from openmixing.core.measure import measure
+    from openmixing.core.units import parse_beats, to_bars
+
+    with pytest.raises(ValueError):
+        parse_beats("1/0")
+    with pytest.raises(OpenMixingError):
+        to_bars(float("nan"), {"bpm": 120.0, "first_downbeat": 0.0})
+    bad = tmp_path / "bad.wav"
+    bad.write_bytes(b"not audio")
+    for fn in (decode, measure):
+        with pytest.raises(OpenMixingError) as ei:
+            fn(str(bad) if fn is decode else bad)
+        assert ei.value.code == "io_error"
+    with pytest.raises(TypeError):
+        write_json(tmp_path / "x.json", {"a": object()})
+    assert not list(tmp_path.glob(".*.tmp"))

@@ -1,13 +1,10 @@
-"""Look-ahead peak limiter (pedalboard's Limiter adds make-up gain, which a master bus must not)."""
 from __future__ import annotations
 
 import numpy as np
 from scipy.ndimage import minimum_filter1d, uniform_filter1d
 
-from ..models import SR
-
-BLOCK = 48  # 1 ms
-SMOOTH = 40  # blocks of gain smoothing (attack = release ~ 40 ms)
+BLOCK = 48
+SMOOTH = 40
 
 
 def limit(x: np.ndarray, ceiling_db: float = -1.5) -> np.ndarray:

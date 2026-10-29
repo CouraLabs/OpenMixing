@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
-
 from synth import make_track
-from openmixing import server as S, stems as stemlib
+
+from openmixing import server as S
+from openmixing.analysis import stems as stemlib
 from openmixing.library import Library
-from openmixing.setmodel import Clip
+from openmixing.model import Clip
 
 
 def fake_separate(audio):
@@ -21,7 +22,7 @@ def folder(tmp_path, monkeypatch):
     make_track(tmp_path / "b.flac", bpm=126, bars=16, bass_hz=61.7, pad_hz=370)
     monkeypatch.setattr(stemlib, "separate", fake_separate)
     monkeypatch.setattr(stemlib, "available", lambda: True)
-    S._state.update(lib=Library(tmp_path), set=None)
+    S.STATE.update(lib=Library(tmp_path), set=None)
     S.new_set("t")
     return tmp_path
 
@@ -58,8 +59,8 @@ def test_set_stem_requires_stems_on(folder):
 
 
 def test_render_stem_levels(folder):
-    from openmixing import render as R
-    from openmixing.setmodel import TempoMap
+    from openmixing import engine as R
+    from openmixing.model import TempoMap
     S.lib().separate("a.flac")
     c = S.add_clip("a.flac", bars=4, stems=True)["clip"]
     clip, e = S.clip_of(c), S.info(S.clip_of(c).track)
@@ -125,7 +126,7 @@ def test_legacy_cache_is_detected_and_resplit(folder):
 
 def test_legacy_set_and_plan_load(folder):
     from openmixing import plan as planlib
-    from openmixing.setmodel import Clip
+    from openmixing.model import Clip
     c = Clip.from_dict({"id": "c1", "track": "x", "stems": True, "lanes": {
         "stem_drums_bass": [[0, 1], [4, 0]], "stem_harmonic": [[0, 0.5]], "stem_vocals": [[0, 0]]}})
     assert c.lanes["stem_drums"].points == c.lanes["stem_bass"].points == [[0, 1], [4, 0]]
@@ -161,8 +162,8 @@ def test_stem_blend_swaps_drums_and_bass_without_doubling(folder):
 
 
 def _render(c):
-    from openmixing import render as R
-    from openmixing.setmodel import TempoMap
+    from openmixing import engine as R
+    from openmixing.model import TempoMap
     clip, e = S.clip_of(c), S.info(S.clip_of(c).track)
     return R.render_clip(clip, e, R.load_audio(clip, e, R.AudioCache()), TempoMap(clip, e["bpm"]))
 
@@ -188,7 +189,7 @@ def test_stem_fx_touches_only_its_stem(folder):
 
 
 def test_stem_fx_tail_rings_past_the_clip(folder):
-    from openmixing import render as R
+    from openmixing import engine as R
     S.lib().separate("a.flac")
     c = S.add_clip("a.flac", bars=4, stems=True)["clip"]
     S.add_fx(c, "echo", 3, 1, beats="1/2", stem="vocals")
@@ -200,7 +201,7 @@ def test_stem_fx_needs_stems(folder):
     c = S.add_clip("a.flac", bars=4)["clip"]
     with pytest.raises(Exception, match="stems_off|plays the full mix"):
         S.add_fx(c, "echo", 1, 2, stem="vocals")
-    S.clip_of(c).fx.append(__import__("openmixing.setmodel", fromlist=["FxEvent"]).FxEvent("f", "echo", 4.0, 4.0, 1.0, 1.0, {}, "vocals"))
+    S.clip_of(c).fx.append(__import__("openmixing.model", fromlist=["FxEvent"]).FxEvent("f", "echo", 4.0, 4.0, 1.0, 1.0, {}, "vocals"))
     with pytest.raises(ValueError, match="stem fx"):
         _render(c)
 
@@ -287,7 +288,7 @@ def test_audit_bass_clash_reads_drums_when_bass_is_empty(folder, monkeypatch):
 
 
 def test_stems_survive_an_analysis_version_bump(folder, monkeypatch):
-    from openmixing import library
+    from openmixing.library import tracks as library
     S.lib().separate("a.flac")
     monkeypatch.setattr(library, "ANALYSIS_VERSION", library.ANALYSIS_VERSION + 1)
     assert S.lib().stem_paths(S.lib().resolve("a.flac")) is not None

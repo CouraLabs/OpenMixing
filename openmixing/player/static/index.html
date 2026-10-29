@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>OpenMixing player</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/static/css/player.css">
+</head><body><main>
+<header class="bar-top"><h1 class="brand"><svg viewBox="0 0 28 28" fill="none" stroke-width="2.6" aria-hidden="true"><circle cx="10" cy="14" r="7.5" stroke="#ff6a2b"/><circle cx="18" cy="14" r="7.5" stroke="#3ca2ff"/><circle cx="14" cy="14" r="1.8" fill="#f04fd0" stroke="none"/></svg><span>Open<b>Mixing</b></span></h1><span id="title"></span><span class="dim" id="stats"></span><span style="flex:1"></span>
+<div class="themes" id="themes" role="group" aria-label="Wave colors">
+ <button class="th" data-th="neon" style="--a:#ff6a2b;--b:#f04fd0;--c:#3ca2ff" title="Neon wave colors" aria-label="Neon wave colors"></button>
+ <button class="th" data-th="club" style="--a:#2f6bff;--b:#ffa21f;--c:#f2f6ff" title="Club wave colors" aria-label="Club wave colors"></button>
+ <button class="th" data-th="aurora" style="--a:#ff3d5a;--b:#2be38a;--c:#3cc8ff" title="Aurora wave colors" aria-label="Aurora wave colors"></button>
+ <button class="th" data-th="ember" style="--a:#961628;--b:#d65c1c;--c:#ffc478" title="Ember wave colors" aria-label="Ember wave colors"></button>
+ <button class="th" data-th="abyss" style="--a:#183496;--b:#148a96;--c:#96beeb" title="Abyss wave colors" aria-label="Abyss wave colors"></button></div>
+<button class="tgl" id="mixbtn" aria-pressed="true" title="Show or hide the full-set mix panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 4h13M1.5 8h13M1.5 12h13"/><path d="M5 2.5v3M10 6.5v3M7 10.5v3"/></svg>Mix panel: <span id="mixst">on</span></button>
+<select id="sets" title="Switch rendered set" aria-label="Rendered set"></select></header>
+<section class="stage">
+ <div class="transport"><button class="play" id="pp" data-s="play" aria-label="Play"><svg class="i-play" viewBox="0 0 20 20"><path d="M5 3.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 5 3.2z"/></svg><svg class="i-pause" viewBox="0 0 20 20"><rect x="4" y="3" width="4" height="14" rx="1.2"/><rect x="12" y="3" width="4" height="14" rx="1.2"/></svg></button><span class="mono" id="time">0:00 <span>/ 0:00</span></span>
+  <span id="now" aria-live="polite"></span>
+  <div class="tools"><button class="tgl" id="prevT" title="Jump to the start of the previous transition, with a run-up ([)">Previous transition</button><span id="trn"></span><button class="tgl" id="nextT" title="Jump to the start of the next transition, with a run-up (])">Next transition</button>
+   <button class="tgl" id="flagbtn" title="Flag this moment and copy a note for your agent (F)">Flag moment</button><button class="tgl" id="copyflags" hidden></button><button class="tgl" id="clrflags" hidden>Clear flags</button></div></div>
+ <div class="status" id="status" role="status" hidden><span id="stxt"></span><button class="tgl" id="retry" hidden>Retry now</button></div>
+ <div id="zwrap"><canvas id="zv" aria-label="Zoomed waveforms of the playing and next track"></canvas></div>
+ <div id="tlwrap"><canvas id="tl" height="300" tabindex="0" role="slider" aria-label="Set position" aria-valuemin="0" aria-valuenow="0"></canvas></div>
+ <div class="leg"><span><i style="background:var(--low)"></i>low</span><span><i style="background:var(--mid)"></i>mid</span><span><i style="background:var(--high)"></i>high</span><span><i style="background:var(--low);border-radius:0;height:3px;vertical-align:2px"></i>low EQ killed</span><span><i style="background:#ff3b3b"></i>track bar.beat (28.1 to 28.4)</span><span><i style="background:var(--fx)"></i>fx</span><span><i style="background:var(--loop)"></i>loop (↺ wrap back, pass n/total)</span><span><i style="background:#fff6"></i>fader level (white line)</span><span class="hint">click a waveform to seek · scroll over the large waveform to zoom · Space play/pause · ← → skip 5 s (Shift 30 s)</span></div>
+</section>
+<div class="below">
+<div class="decks"><div class="slot l" id="sL"></div><div class="mixer"><div class="strip" id="mL"></div><div class="strip" id="mR"></div></div><div class="slot" id="sR"></div></div>
+<div class="card list"><table><thead><tr><th class="n">#</th><th>Title</th><th>Artist</th><th class="n">BPM</th><th>Key</th><th class="n">Energy</th><th class="n">Start</th><th class="n">Length</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+<audio id="au" preload="auto"></audio>
+</main>
+<script type="module" src="/static/js/main.js"></script>
+</body></html>

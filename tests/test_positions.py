@@ -1,11 +1,12 @@
 import pytest
-
-from openmixing import plan as P, server as S
-from openmixing.errors import OpenMixingError
-from openmixing.library import Library
-from openmixing.setmodel import SetModel
-from openmixing.units import duration_bars, is_output_unit, out_bars
 from synth import make_track
+
+from openmixing import plan as P
+from openmixing import server as S
+from openmixing.core.errors import OpenMixingError
+from openmixing.core.units import duration_bars, is_output_unit, out_bars
+from openmixing.library import Library
+from openmixing.model import SetModel
 
 
 @pytest.fixture
@@ -15,9 +16,9 @@ def lib(tmp_path):
     lib.analyze("a.wav")
     tid = lib.resolve("a.wav")["id"]
     lib.set_cue(tid, "hook", 12.0)
-    S._state.update(lib=lib, set=SetModel("t"))
+    S.STATE.update(lib=lib, set=SetModel("t"))
     yield lib
-    S._state.update(lib=None, set=None)
+    S.STATE.update(lib=None, set=None)
 
 
 def test_output_vs_source_units():

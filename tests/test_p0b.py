@@ -4,13 +4,15 @@ import os
 
 import numpy as np
 import pytest
-
-from openmixing import candidates, region as R, server as S
-from openmixing.analysis.confidence import combine, unit
-from openmixing.errors import OpenMixingError
-from openmixing.library import ANALYSIS_VERSION, Library
-from openmixing.versions import versions
 from synth import make_track
+
+from openmixing import candidates
+from openmixing import server as S
+from openmixing.analysis import region as R
+from openmixing.analysis.confidence import combine, unit
+from openmixing.core.errors import OpenMixingError
+from openmixing.library import ANALYSIS_VERSION, Library
+from openmixing.server.versions import versions
 
 
 @pytest.fixture(scope="module")
@@ -26,9 +28,9 @@ def lib(tmp_path_factory):
 
 @pytest.fixture
 def server(lib):
-    S._state.update(lib=lib, set=None)
+    S.STATE.update(lib=lib, set=None)
     yield S
-    S._state.update(lib=None, set=None)
+    S.STATE.update(lib=None, set=None)
 
 
 def _walk(o, path=""):
@@ -192,7 +194,8 @@ def test_outputs_stay_in_state_folder(lib):
 def test_ui_audio_route_rejects_traversal(lib):
     import urllib.error
     import urllib.request
-    from openmixing.ui.server import start
+
+    from openmixing.player import start
     (lib.state / "renders" / "s.flac").write_bytes(b"fLaC")
     (lib.root / "secret.wav").write_bytes(b"RIFF")
     ui = start(lib, _free_port())
@@ -215,6 +218,7 @@ def _free_port():
 def test_capabilities(server, lib):
     c = server.capabilities()
     assert {"flac", "wav", "mp3"} <= set(c["output_formats"]) and "wav" in c["input_formats"]
+    assert c["default_output_format"] == "mp3" and c["mp3_bitrate_kbps"] == 320
     assert "echo" in c["fx"] and "bass_swap" in c["transition_styles"] and "linear" in c["curves"]
     assert c["stems"]["names"] == ["vocals", "drums", "bass", "other"] and c["max_lanes"] is None
     assert c["file_rules"] == {"read": str(lib.root), "write": str(lib.state)}

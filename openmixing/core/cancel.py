@@ -1,0 +1,2 @@
+class JobCancelled(Exception):
+    pass

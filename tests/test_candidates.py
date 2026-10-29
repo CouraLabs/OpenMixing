@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
+from synth import make_track
 
 from openmixing import candidates as C
 from openmixing import plan as P
 from openmixing.library import Library
-from synth import make_track
 
 
 @pytest.fixture(scope="module")

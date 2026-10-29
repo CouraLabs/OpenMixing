@@ -1,13 +1,16 @@
 import asyncio
+import subprocess
 
 import numpy as np
 import pytest
-
-from openmixing import plan as P, server as S, validate as V
-from openmixing.errors import OpenMixingError
-from openmixing.library import Library
-from openmixing.setmodel import SetModel
 from synth import make_track
+
+from openmixing import plan as P
+from openmixing import server as S
+from openmixing import validate as V
+from openmixing.core.errors import OpenMixingError
+from openmixing.library import Library
+from openmixing.model import SetModel
 
 
 @pytest.fixture(scope="module")
@@ -18,9 +21,9 @@ def lib(tmp_path_factory):
     lib = Library(d)
     lib.analyze("a.wav")
     lib.analyze("b.wav")
-    S._state.update(lib=lib, set=SetModel("t"))
+    S.STATE.update(lib=lib, set=SetModel("t"))
     yield lib
-    S._state.update(lib=None, set=None)
+    S.STATE.update(lib=None, set=None)
 
 
 def plan(intent=None, offset_ms=0):
@@ -101,3 +104,16 @@ def test_render_variations_and_compare(lib):
     bad_plan = {"version": "1.0", "clips": [{"track": "a.wav", "bars": -1}]}
     r2 = asyncio.run(S.render_variations("a.wav", "b.wav", plans=[bad_plan]))
     assert "error" in r2["takes"][0]
+
+
+def test_render_defaults_to_mp3_320_and_flac_on_request(lib):
+    S.STATE["set"] = SetModel("fmt")
+    S.add_clip("a.wav", bars=4)
+    r = asyncio.run(S.render())
+    assert r["path"].endswith("fmt.mp3") and r["format"] == "mp3"
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_name,bit_rate", "-of", "csv=p=0", r["path"]],
+                         capture_output=True, text=True, check=True).stdout.strip()
+    assert out.startswith("mp3") and abs(int(out.split(",")[1]) - 320000) < 2000
+    assert np.isfinite(r["metrics"]["integrated_lufs"])
+    f = asyncio.run(S.render(format="flac"))
+    assert f["path"].endswith("fmt.flac")

@@ -1,11 +1,11 @@
 import json
 
 import pytest
+from synth import make_track
 
 from openmixing import plan as P
 from openmixing.library import Library
-from openmixing.setmodel import SetModel
-from synth import make_track
+from openmixing.model import SetModel
 
 
 @pytest.fixture(scope="module")
@@ -84,13 +84,14 @@ def test_apply_is_atomic_and_version_checked(lib):
 
 def test_server_tools_do_not_change_set_on_failure(lib):
     from openmixing import server as s
-    s._state["lib"] = lib
-    s._state["set"] = SetModel("keep")
+    s.STATE["lib"] = lib
+    s.STATE["set"] = SetModel("keep")
     bad = good_plan()
     bad["clips"][0]["bpm"] = 1
     r = s.apply_plan(bad)
     assert r["applied"] is False and s.cur().name == "keep" and not s.cur().clips
     assert s.apply_plan(good_plan(), dry_run=True)["applied"] is False and not s.cur().clips
     assert s.apply_plan(good_plan())["applied"] is True and len(s.cur().clips) == 2
-    assert s.get_plan_schema()["version"] == "1.0"
+    assert s.get_plan_schema()["version"] == "1.1"
     assert s.validate_plan(s.export_plan())["ok"]
+    s.STATE.update(lib=None, set=None)

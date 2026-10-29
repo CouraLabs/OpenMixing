@@ -10,10 +10,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-beat = ["beat-this"]   # more accurate beat/downbeat tracking (pulls in torch)
+beat = ["beat-this"]
 fingerprint = ["pyacoustid"]
-stems = ["demucs", "torch"]   # stem separation (vocals / drums+bass / harmonic)
-dev = ["pytest"]
+stems = ["demucs", "torch"]
+dev = ["pytest", "ruff"]
 
 [project.scripts]
 openmixing = "openmixing.__main__:main"
@@ -26,8 +26,19 @@ build-backend = "setuptools.build_meta"
 include = ["openmixing*"]
 
 [tool.setuptools.package-data]
-"openmixing.ui" = ["index.html"]
+"openmixing.player" = ["static/*", "static/**/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["tests"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 150
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E731", "E741"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]

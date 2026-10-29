@@ -1,14 +1,14 @@
-"""`openmixing` = MCP stdio server for the tracks folder in the current directory.
-`openmixing ui [--dir D] [--port P]` serves the player for already-rendered sets without an agent."""
 from __future__ import annotations
 
 import argparse
 import os
 import sys
 
+DESCRIPTION = "OpenMixing: MCP DJ mixing server (mcp) or the web player for rendered sets (ui)."
+
 
 def main(argv=None) -> None:
-    ap = argparse.ArgumentParser(prog="openmixing", description=__doc__)
+    ap = argparse.ArgumentParser(prog="openmixing", description=DESCRIPTION)
     ap.add_argument("command", nargs="?", choices=["mcp", "ui"], default="mcp")
     ap.add_argument("--dir", help="tracks folder (default: current directory or $OPENMIXING_DIR)")
     ap.add_argument("--port", type=int, default=8765)
@@ -20,7 +20,7 @@ def main(argv=None) -> None:
         import webbrowser
 
         from .library import Library
-        from .ui.server import start
+        from .player import start
 
         info = start(Library(), args.port)
         print(f"OpenMixing player: {info['url']}", file=sys.stderr)

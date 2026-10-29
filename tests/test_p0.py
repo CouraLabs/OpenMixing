@@ -3,14 +3,13 @@ import json
 import numpy as np
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
+from synth import make_track
 
 from openmixing import validate
-from openmixing.errors import OpenMixingError, classify, structured
+from openmixing.core.errors import OpenMixingError, classify, structured
+from openmixing.core.units import SR, to_bars
 from openmixing.library import Library
-from openmixing.models import SR
-from openmixing.setmodel import Clip, SetModel
-from openmixing.units import to_bars
-from synth import make_track
+from openmixing.model import Clip, SetModel
 
 E = {"bpm": 120.0, "first_downbeat": 0.5, "file": "t.wav"}
 SECS = [{"label": "intro", "start_bar": 0}, {"label": "drop", "start_bar": 16}]
@@ -58,8 +57,9 @@ def test_cues_roundtrip(tmp_path):
     lib.set_cue(tid, "hook", 4.0)
     assert lib.to_bars(tid, "cue:hook+1") == 5.0
     lib.delete_cue(tid, "hook")
-    with pytest.raises(KeyError):
+    with pytest.raises(OpenMixingError) as ei:
         lib.delete_cue(tid, "hook")
+    assert ei.value.code == "not_found"
 
 
 def test_beat_drift_and_silence():
